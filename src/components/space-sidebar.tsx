@@ -8,7 +8,7 @@ import { api } from '../../convex/_generated/api';
 import type { Doc, Id } from '../../convex/_generated/dataModel';
 
 /** Tree of every space, shown beside the canvas on wide screens. */
-export function SpaceSidebar({ activeId }: { activeId: Id<'spaces'> }) {
+export function SpaceSidebar({ activeId, topInset }: { activeId: Id<'spaces'>; topInset: number }) {
   const theme = useTheme();
   const router = useRouter();
   const spaces = useQuery(api.spaces.listAll) ?? [];
@@ -47,7 +47,7 @@ export function SpaceSidebar({ activeId }: { activeId: Id<'spaces'> }) {
   return (
     <ScrollView
       style={[styles.sidebar, { backgroundColor: theme.background, borderRightColor: theme.border }]}
-      contentContainerStyle={{ paddingVertical: Spacing.two }}>
+      contentContainerStyle={{ paddingTop: topInset, paddingBottom: Spacing.four }}>
       <Text style={[styles.heading, { color: theme.textSecondary }]}>ALL SPACES</Text>
       {renderLevel('root', 0)}
     </ScrollView>
