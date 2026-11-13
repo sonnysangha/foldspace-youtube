@@ -24,6 +24,20 @@ export const spaceContent = v.object({
   childSpaceId: v.id("spaces"),
 });
 
+// A freehand stroke. Points are [x0, y0, x1, y1, ...] relative to the item's
+// top-left corner, so moving the item moves the whole stroke.
+export const drawingContent = v.object({
+  kind: v.literal("drawing"),
+  color: v.string(),
+  strokeWidth: v.number(),
+  points: v.array(v.number()),
+});
+
+export const imageContent = v.object({
+  kind: v.literal("image"),
+  storageId: v.id("_storage"),
+});
+
 export default defineSchema({
   // A space is a canvas. Root spaces have no parent; nested spaces point at
   // the space whose canvas they sit on.
@@ -43,6 +57,6 @@ export default defineSchema({
     width: v.number(),
     height: v.number(),
     z: v.number(),
-    content: v.union(noteContent, todoContent, spaceContent),
+    content: v.union(noteContent, todoContent, spaceContent, drawingContent, imageContent),
   }).index("by_spaceId", ["spaceId"]),
 });

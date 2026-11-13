@@ -23,7 +23,7 @@ export default function ItemSheet() {
       </View>
     );
   }
-  if (item === null || item.content.kind === 'space') {
+  if (item === null || (item.content.kind !== 'note' && item.content.kind !== 'todo')) {
     return (
       <View style={[styles.centered, { backgroundColor: theme.background }]}>
         <ThemedText>This item no longer exists.</ThemedText>

@@ -69,7 +69,7 @@ export default function SpaceScreen() {
   function openItem(item: CanvasItem) {
     if (item.content.kind === 'space') {
       router.push({ pathname: '/space/[id]', params: { id: item.content.childSpaceId } });
-    } else {
+    } else if (item.content.kind === 'note' || item.content.kind === 'todo') {
       router.push({ pathname: '/item/[id]', params: { id: item._id } });
     }
   }

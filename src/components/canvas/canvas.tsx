@@ -78,6 +78,10 @@ export function Canvas({ ref, items, width, height, onMoveItem, onOpenItem, onTo
 
   const gesture = useSimultaneousGestures(pan, pinch);
 
+  // item.z is a timestamp (last touched). Native zIndex needs small integers,
+  // so stack by rank instead: most recently touched on top.
+  const ordered = [...items].sort((a, b) => a.z - b.z);
+
   const worldStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: tx.get() }, { translateY: ty.get() }, { scale: scale.get() }],
   }));
@@ -98,12 +102,12 @@ export function Canvas({ ref, items, width, height, onMoveItem, onOpenItem, onTo
             </Defs>
             <Rect width={GRID_EXTENT} height={GRID_EXTENT} fill="url(#dots)" />
           </Svg>
-          {items.map((item) => (
+          {ordered.map((item, index) => (
             <CanvasItemView
               key={item._id}
               x={item.x}
               y={item.y}
-              z={item.z}
+              z={index + 1}
               canvasScale={scale}
               onMoveEnd={(x, y) => onMoveItem(item, x, y)}>
               <ItemCard

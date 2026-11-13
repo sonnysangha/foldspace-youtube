@@ -55,6 +55,9 @@ export function ItemCard({ item, onOpen, onToggleTask }: CardProps) {
     );
   }
 
+  // Other kinds (drawings, images) get their own cards as those features land.
+  if (content.kind !== 'space') return null;
+
   const color = item.child?.color ?? '#6C5CE7';
   return (
     <Pressable
