@@ -96,19 +96,16 @@ export function ItemCard({ item, onOpen, onToggleTask }: CardProps) {
 
   if (content.kind !== 'space') return null;
 
-  const color = item.child?.color ?? '#6C5CE7';
+  // The canvas draws nested spaces with SpaceItemCard, which shows a live
+  // preview. This plain version is what appears inside those previews, so a
+  // preview never nests another one.
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Open nested space ${item.child?.name ?? ''}`}
-      onPress={onOpen}
-      style={[styles.card, size, styles.space, { backgroundColor: color }]}>
+    <View style={[styles.card, size, styles.space, { backgroundColor: item.child?.color ?? '#6C5CE7' }]}>
       <View style={styles.spaceTab} />
       <Text style={styles.spaceName} numberOfLines={2}>
         {item.child?.name ?? 'Space'}
       </Text>
-      <Text style={styles.spaceHint}>Tap to open ›</Text>
-    </Pressable>
+    </View>
   );
 }
 
@@ -184,5 +181,4 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.35)',
   },
   spaceName: { color: '#FFFFFF', fontSize: 18, lineHeight: 22, fontWeight: '700' },
-  spaceHint: { color: 'rgba(255, 255, 255, 0.85)', fontSize: 13, marginTop: 2 },
 });

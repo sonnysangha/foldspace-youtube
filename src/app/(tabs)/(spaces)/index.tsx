@@ -6,11 +6,14 @@ import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, View } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Welcome } from '@/components/auth/welcome';
+import { SpaceCardFace } from '@/components/canvas/space-card';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useLayout } from '@/hooks/use-layout';
 import { useTheme } from '@/hooks/use-theme';
 import { api } from '../../../../convex/_generated/api';
+
+const CARD_HEIGHT = 170;
 
 export default function HomeScreen() {
   const { isLoading, isAuthenticated } = useConvexAuth();
@@ -103,22 +106,26 @@ function SpacesHome() {
             <Link href={{ pathname: '/space/[id]', params: { id: item._id } }} asChild>
               {/* Link asChild drops a function `style`, so the pressed state is
                   applied to an inner View instead of the Pressable. */}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Open space ${item.name}`}
-                style={{ width: cardWidth }}>
-                {({ pressed }) => (
-                  <View
-                    style={[
-                      styles.card,
-                      { backgroundColor: item.color, transform: [{ scale: pressed ? 0.97 : 1 }] },
-                    ]}>
-                    <ThemedText style={styles.cardTitle} numberOfLines={3}>
-                      {item.name}
-                    </ThemedText>
-                  </View>
-                )}
-              </Pressable>
+              {/* On iOS 18+ the card zooms into the space it opens. */}
+              <Link.AppleZoom>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open space ${item.name}`}
+                  style={{ width: cardWidth }}>
+                  {({ pressed }) => (
+                    <View style={{ transform: [{ scale: pressed ? 0.97 : 1 }] }}>
+                      <SpaceCardFace
+                        spaceId={item._id}
+                        name={item.name}
+                        color={item.color}
+                        width={cardWidth}
+                        height={CARD_HEIGHT}
+                        radius={Radius.large}
+                      />
+                    </View>
+                  )}
+                </Pressable>
+              </Link.AppleZoom>
             </Link>
           )}
         />
@@ -129,11 +136,4 @@ function SpacesHome() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.four },
-  card: {
-    height: 130,
-    borderRadius: Radius.large,
-    padding: Spacing.three,
-    justifyContent: 'flex-end',
-  },
-  cardTitle: { color: '#FFFFFF', fontSize: 18, lineHeight: 22, fontWeight: 700 },
 });

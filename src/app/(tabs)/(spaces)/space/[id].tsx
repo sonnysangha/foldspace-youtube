@@ -1,7 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import { useMutation, useQuery } from 'convex/react';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, usePreventZoomTransitionDismissal, useRouter } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { useRef, useState } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +32,11 @@ export default function SpaceScreen() {
   const overlayTop = Platform.OS === 'ios' ? insets.top + 52 : Spacing.two;
   const canvasRef = useRef<CanvasHandle>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+  // Opening a space zooms into it, and iOS would let a pinch or a downward
+  // swipe anywhere zoom back out. Those belong to the canvas here, so only a
+  // swipe from the left edge dismisses. A quick pinch-in goes up instead.
+  usePreventZoomTransitionDismissal({ unstable_dismissalBoundsRect: { maxX: 28 } });
 
   const found = useQuery(api.spaces.get, { spaceId });
   const items = useQuery(api.items.list, found ? { spaceId } : 'skip');
@@ -119,10 +124,19 @@ export default function SpaceScreen() {
     return { x: Math.round(center.x - width / 2 + jitter), y: Math.round(center.y - height / 2 + jitter) };
   }
 
+  /** Up one level: the parent space, or the list of spaces from a top-level one. */
+  function goUp() {
+    const parent = found?.path[found.path.length - 2];
+    if (parent) {
+      router.dismissTo({ pathname: '/space/[id]', params: { id: parent._id } });
+    } else {
+      router.dismissTo('/');
+    }
+  }
+
+  // Nested spaces open themselves: their card is a link (see SpaceItemCard).
   function openItem(item: CanvasItem) {
-    if (item.content.kind === 'space') {
-      router.push({ pathname: '/space/[id]', params: { id: item.content.childSpaceId } });
-    } else if (item.content.kind === 'note' || item.content.kind === 'todo') {
+    if (item.content.kind === 'note' || item.content.kind === 'todo') {
       router.push({ pathname: '/item/[id]', params: { id: item._id } });
     } else if (item.content.kind === 'image') {
       Alert.alert('Image', undefined, [
@@ -265,6 +279,7 @@ export default function SpaceScreen() {
           onToggleTask={toggleTask}
           pen={drawing ? { color: drawColor, strokeWidth: DrawStrokeWidth } : null}
           onDrawStroke={(stroke) => void saveStroke(stroke)}
+          onPinchOut={goUp}
         />
 
         {found.path.length > 1 ? (

@@ -8,11 +8,17 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { useTheme } from '@/hooks/use-theme';
 import { CanvasItemView } from './canvas-item';
 import { ItemCard } from './cards';
+import { SpaceItemCard } from './space-card';
 import { type Stroke, toStroke } from './drawing';
 import type { CanvasItem } from './types';
 
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 3;
+// A pinch-in counts as "go up a level" only when it is quick: it has to reach
+// this speed (scale factor per second) and actually close the fingers this far.
+// A slow pinch never reaches the speed, so it stays an ordinary zoom.
+const FAST_PINCH_VELOCITY = 2.5;
+const FAST_PINCH_MAX_SCALE = 0.85;
 const GRID_EXTENT = 2400;
 const GRID_STEP = 28;
 // Screen distance a finger must move before another point is recorded.
@@ -50,12 +56,15 @@ type Props = {
   /** Set while Draw mode is on. One finger then draws instead of panning. */
   pen?: Pen | null;
   onDrawStroke?: (stroke: Stroke) => void;
+  /** Called after a quick pinch-in, the gesture for leaving this canvas. */
+  onPinchOut?: () => void;
 };
 
 /**
  * A pannable, zoomable surface. One finger on the background pans, two
  * fingers pinch to zoom around the point between them, and dragging a card
- * moves just that card. All of it runs on the UI thread.
+ * moves just that card. All of it runs on the UI thread. A quick pinch-in
+ * reports `onPinchOut` instead of settling at the smaller zoom.
  *
  * In Draw mode one finger draws a stroke instead, and two fingers still pan
  * and zoom.
@@ -70,6 +79,7 @@ export function Canvas({
   onToggleTask,
   pen = null,
   onDrawStroke,
+  onPinchOut,
 }: Props) {
   const theme = useTheme();
   const tx = useSharedValue(0);
@@ -102,9 +112,28 @@ export function Canvas({
     },
   });
 
+  // What the pinch in progress has done so far: how far the fingers have
+  // closed, and the fastest they closed.
+  const pinchScale = useSharedValue(1);
+  const pinchPeakInward = useSharedValue(0);
+  // The view before the pinch, to put back when the pinch means "leave".
+  const pinchStart = useSharedValue({ tx: 0, ty: 0, scale: 1 });
+
+  function leave() {
+    onPinchOut?.();
+  }
+
   const pinch = usePinchGesture({
+    onActivate: () => {
+      'worklet';
+      pinchScale.set(1);
+      pinchPeakInward.set(0);
+      pinchStart.set({ tx: tx.get(), ty: ty.get(), scale: scale.get() });
+    },
     onUpdate: (event) => {
       'worklet';
+      pinchScale.set(event.scale);
+      if (event.velocity < pinchPeakInward.get()) pinchPeakInward.set(event.velocity);
       const current = scale.get();
       const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, current * event.scaleChange));
       const ratio = next / current;
@@ -112,6 +141,18 @@ export function Canvas({
       tx.set(event.focalX - (event.focalX - tx.get()) * ratio);
       ty.set(event.focalY - (event.focalY - ty.get()) * ratio);
       scale.set(next);
+    },
+    onDeactivate: (event) => {
+      'worklet';
+      if (event.canceled) return;
+      if (pinchScale.get() > FAST_PINCH_MAX_SCALE || pinchPeakInward.get() > -FAST_PINCH_VELOCITY) return;
+      // The pinch was a command, not a zoom, so undo the zoom it caused.
+      const start = pinchStart.get();
+      const spring = { duration: 300, dampingRatio: 1 };
+      tx.set(withSpring(start.tx, spring));
+      ty.set(withSpring(start.ty, spring));
+      scale.set(withSpring(start.scale, spring));
+      scheduleOnRN(leave);
     },
   });
 
@@ -207,11 +248,15 @@ export function Canvas({
               z={index + 1}
               canvasScale={scale}
               onMoveEnd={(x, y) => onMoveItem(item, x, y)}>
-              <ItemCard
-                item={item}
-                onOpen={() => onOpenItem(item)}
-                onToggleTask={(taskId) => onToggleTask(item, taskId)}
-              />
+              {item.content.kind === 'space' ? (
+                <SpaceItemCard item={item} />
+              ) : (
+                <ItemCard
+                  item={item}
+                  onOpen={() => onOpenItem(item)}
+                  onToggleTask={(taskId) => onToggleTask(item, taskId)}
+                />
+              )}
             </CanvasItemView>
           ))}
         </Animated.View>
