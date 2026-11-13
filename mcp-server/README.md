@@ -11,8 +11,10 @@ It follows Clerk's guide,
 
 1. The MCP client discovers Clerk as the authorization server from
    `/.well-known/oauth-protected-resource/mcp` and signs the user in with OAuth.
-2. `POST /mcp` verifies the Clerk OAuth access token (signature, expiry and that
-   its audience is this server's URL) and requires the `profile` and `email` scopes.
+2. `POST /mcp` verifies the Clerk OAuth access token (signature, issuer, expiry
+   and that its audience is exactly this server's URL) and requires the `profile`
+   and `email` scopes. Session tokens, API keys and tokens for another resource
+   are rejected with a `WWW-Authenticate` challenge that points at the metadata.
 3. Each tool calls the Convex `/agent` HTTP action with a shared secret and the
    Clerk user id taken from the verified token. Convex scopes every read and
    write to that user. The user id never comes from tool input.
@@ -46,6 +48,19 @@ claude mcp login foldspace
 
 Complete Clerk sign-in and consent. Public liveness is available at
 https://foldspace-mcp.vercel.app/health; the MCP endpoint itself requires OAuth.
+
+## Tests
+
+```bash
+pnpm test
+```
+
+The tests start the real Express app and drive it with the MCP SDK client
+against a stand-in Clerk (discovery, sign-in, PKCE code exchange, signing keys,
+token introspection) and a stand-in Convex, so they need no secrets or network.
+They cover metadata discovery, sign-in followed by tool calls, rejection of
+missing, expired, wrong-audience, wrong-issuer, forged and session tokens, and
+repeated and concurrent calls.
 
 ## Run it locally
 

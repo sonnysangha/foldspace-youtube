@@ -13,6 +13,7 @@ import {
   MCP_RESOURCE_URL,
   PORT,
   REQUIRED_SCOPES,
+  RESOURCE_METADATA_PATH,
   RESOURCE_METADATA_URL,
   verifyMcpToken,
 } from './lib/mcp-auth.ts'
@@ -246,14 +247,19 @@ function createServer() {
 }
 
 app.post('/mcp', async (req, res) => {
-  const authInfo = await verifyMcpToken(
-    new Request(MCP_RESOURCE_URL, {
-      headers: { authorization: req.get('authorization') ?? '' },
-    }),
-  )
+  const authorization = req.get('authorization') ?? ''
   const challenge = `Bearer resource_metadata="${RESOURCE_METADATA_URL}"`
+  if (!/^Bearer \S+$/i.test(authorization)) {
+    // No credentials: point the client at the metadata so it can start sign-in.
+    res.status(401).set('WWW-Authenticate', challenge).json({ error: 'unauthorized' })
+    return
+  }
+  const authInfo = await verifyMcpToken(new Request(MCP_RESOURCE_URL, { headers: { authorization } }))
   if (!authInfo) {
-    res.status(401).set('WWW-Authenticate', challenge).json({ error: 'invalid_token' })
+    res
+      .status(401)
+      .set('WWW-Authenticate', `${challenge}, error="invalid_token"`)
+      .json({ error: 'invalid_token' })
     return
   }
   if (!REQUIRED_SCOPES.every((scope) => authInfo.scopes.includes(scope))) {
@@ -275,7 +281,7 @@ app.all('/mcp', (_, res) => {
 })
 // Public OAuth metadata so MCP clients can discover how to sign the user in.
 app.get(
-  '/.well-known/oauth-protected-resource/mcp',
+  RESOURCE_METADATA_PATH,
   protectedResourceHandlerClerk({
     resource: MCP_RESOURCE_URL,
     scopes_supported: REQUIRED_SCOPES,
