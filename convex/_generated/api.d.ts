@@ -8,13 +8,25 @@
  * @module
  */
 
+import type * as agent from "../agent.js";
+import type * as http from "../http.js";
+import type * as items from "../items.js";
+import type * as model from "../model.js";
+import type * as spaces from "../spaces.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{}>;
+declare const fullApi: ApiFromModules<{
+  agent: typeof agent;
+  http: typeof http;
+  items: typeof items;
+  model: typeof model;
+  spaces: typeof spaces;
+}>;
 
 /**
  * A utility for referencing Convex functions in your app's public API.

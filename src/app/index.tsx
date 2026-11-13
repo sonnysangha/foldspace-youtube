@@ -1,98 +1,127 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { UserButton } from '@clerk/expo/native-components';
+import { useConvexAuth, useQuery } from 'convex/react';
+import { Link, useRouter } from 'expo-router';
+import { Stack } from 'expo-router/stack';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
+import { Welcome } from '@/components/auth/welcome';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import { Radius, Spacing } from '@/constants/theme';
+import { useLayout } from '@/hooks/use-layout';
+import { useTheme } from '@/hooks/use-theme';
+import { api } from '../../convex/_generated/api';
 
 export default function HomeScreen() {
+  const { isLoading, isAuthenticated } = useConvexAuth();
+  const theme = useTheme();
+
+  if (isLoading) {
+    return (
+      <View style={[styles.centered, { backgroundColor: theme.background }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Welcome />
+      </>
+    );
+  }
+  return <SpacesHome />;
+}
+
+function SpacesHome() {
+  const theme = useTheme();
+  const router = useRouter();
+  const { width } = useLayout();
+  const spaces = useQuery(api.spaces.listRoot);
+
+  // As many ~170pt columns as fit, so phones get 2 and unfolded foldables get 4+.
+  const columns = Math.max(2, Math.floor(width / 190));
+  const cardWidth = (width - Spacing.three * (columns + 1)) / columns;
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: 'Spaces',
+          headerLeft: () => (
+            <View style={styles.avatar}>
+              <UserButton />
+            </View>
+          ),
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="New space"
+              hitSlop={12}
+              onPress={() => router.push('/new-space')}>
+              <ThemedText style={{ color: theme.accent, fontSize: 28, lineHeight: 30 }}>＋</ThemedText>
+            </Pressable>
+          ),
+        }}
+      />
+      {spaces === undefined ? (
+        <View style={styles.centered}>
+          <ActivityIndicator />
+        </View>
+      ) : (
+        <FlatList
+          key={columns}
+          data={spaces}
+          numColumns={columns}
+          keyExtractor={(space) => space._id}
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, flexGrow: 1 }}
+          columnWrapperStyle={{ gap: Spacing.three }}
+          ListEmptyComponent={
+            <View style={styles.centered}>
+              <ThemedText type="subtitle" style={{ textAlign: 'center' }}>
+                No spaces yet
+              </ThemedText>
+              <ThemedText themeColor="textSecondary" style={{ textAlign: 'center' }}>
+                Tap ＋ to create your first space.
+              </ThemedText>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <Link href={{ pathname: '/space/[id]', params: { id: item._id } }} asChild>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Open space ${item.name}`}
+                style={({ pressed }) => [
+                  styles.card,
+                  {
+                    width: cardWidth,
+                    backgroundColor: item.color,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                  },
+                ]}>
+                <ThemedText style={styles.cardTitle} numberOfLines={3}>
+                  {item.name}
+                </ThemedText>
+              </Pressable>
+            </Link>
+          )}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.four },
+  avatar: { width: 32, height: 32, borderRadius: 16, overflow: 'hidden' },
+  card: {
+    height: 130,
+    borderRadius: Radius.large,
+    padding: Spacing.three,
+    justifyContent: 'flex-end',
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  cardTitle: { color: '#FFFFFF', fontSize: 18, lineHeight: 22, fontWeight: 700 },
 });
