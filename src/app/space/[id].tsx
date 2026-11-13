@@ -171,7 +171,7 @@ export default function SpaceScreen() {
           ),
         }}
       />
-      {isWide ? <SpaceSidebar activeId={spaceId} /> : null}
+      {isWide ? <SpaceSidebar activeId={spaceId} topInset={overlayTop} /> : null}
       <View style={styles.canvasPane} onLayout={onLayout}>
         <Canvas
           ref={canvasRef}

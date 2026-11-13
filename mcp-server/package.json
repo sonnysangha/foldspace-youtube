@@ -1,0 +1,30 @@
+{
+  "name": "foldspace-mcp-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MCP server that lets a signed-in user's AI agent work in their Foldspace spaces",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=../.env.local index.ts",
+    "dev": "node --watch --env-file=../.env.local index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "dependencies": {
+    "@clerk/backend": "^3.27.0",
+    "@clerk/express": "^2.1.88",
+    "@clerk/mcp-tools": "^0.9.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
+  }
+}
