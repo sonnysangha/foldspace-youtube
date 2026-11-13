@@ -47,11 +47,11 @@ http.route({
           });
         case "create_space":
           return json({
-            result: await ctx.runMutation(internal.agent.createSpace, { ownerId, ...input } as any),
+            result: await ctx.runMutation(internal.agent.createSpace, { ...input, ownerId } as any),
           });
         case "update_space":
           return json({
-            result: await ctx.runMutation(internal.agent.updateSpace, { ownerId, ...input } as any),
+            result: await ctx.runMutation(internal.agent.updateSpace, { ...input, ownerId } as any),
           });
         case "delete_space":
           return json({
@@ -59,11 +59,11 @@ http.route({
           });
         case "create_item":
           return json({
-            result: await ctx.runMutation(internal.agent.createItem, { ownerId, ...input } as any),
+            result: await ctx.runMutation(internal.agent.createItem, { ...input, ownerId } as any),
           });
         case "update_item":
           return json({
-            result: await ctx.runMutation(internal.agent.updateItem, { ownerId, ...input } as any),
+            result: await ctx.runMutation(internal.agent.updateItem, { ...input, ownerId } as any),
           });
         case "delete_item":
           return json({
