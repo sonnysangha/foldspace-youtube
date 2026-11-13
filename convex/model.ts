@@ -226,8 +226,8 @@ export async function createImageItem(
   await loadSpace(ctx, ownerId, args.spaceId);
   const file = await ctx.db.system.get("_storage", args.storageId);
   if (file === null) throw new ConvexError("Upload not found");
+  // Reject without deleting: nothing here proves the caller uploaded this file.
   if (file.contentType === undefined || !file.contentType.startsWith("image/")) {
-    await ctx.storage.delete(args.storageId);
     throw new ConvexError("That file is not an image");
   }
   const auto = await nextPosition(ctx, args.spaceId);
