@@ -1,9 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import * as model from "./model";
-import { noteContent, todoContent } from "./schema";
+import { drawingContent, noteContent, todoContent } from "./schema";
 
 const editableContent = v.union(noteContent, todoContent);
+// Drawings can be created but not edited afterwards, only moved or removed.
+const creatableContent = v.union(noteContent, todoContent, drawingContent);
 
 export const list = query({
   args: { spaceId: v.id("spaces") },
@@ -25,7 +27,7 @@ export const create = mutation({
     spaceId: v.id("spaces"),
     x: v.optional(v.number()),
     y: v.optional(v.number()),
-    content: editableContent,
+    content: creatableContent,
   },
   handler: async (ctx, args) =>
     model.createItem(ctx, await model.requireOwner(ctx), args),
