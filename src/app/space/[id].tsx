@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from 'convex/react';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { useRef, useState } from 'react';
@@ -31,6 +32,10 @@ export default function SpaceScreen() {
   const items = useQuery(api.items.list, found ? { spaceId } : 'skip');
   const createItem = useMutation(api.items.create);
   const removeSpace = useMutation(api.spaces.remove);
+  const generateUploadUrl = useMutation(api.items.generateUploadUrl);
+  const createImage = useMutation(api.items.createImage);
+  const removeItem = useMutation(api.items.remove);
+  const [uploading, setUploading] = useState(false);
 
   // Move the card in the local cache straight away so it never snaps back
   // while the server confirms the new position.
@@ -71,6 +76,45 @@ export default function SpaceScreen() {
       router.push({ pathname: '/space/[id]', params: { id: item.content.childSpaceId } });
     } else if (item.content.kind === 'note' || item.content.kind === 'todo') {
       router.push({ pathname: '/item/[id]', params: { id: item._id } });
+    } else if (item.content.kind === 'image') {
+      Alert.alert('Image', undefined, [
+        { text: 'Delete image', style: 'destructive', onPress: () => void removeItem({ itemId: item._id }) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  }
+
+  /** Pick a photo, upload it to Convex file storage, then place it on the canvas. */
+  async function addImage() {
+    if (uploading) return;
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+    if (picked.canceled) return;
+    const asset = picked.assets[0];
+    // Work out where the card goes before the upload, while the view is where the user left it.
+    const longest = Math.max(asset.width, asset.height) || 260;
+    const position = spot((asset.width / longest) * 260 || 260, (asset.height / longest) * 260 || 195);
+    setUploading(true);
+    try {
+      const uploadUrl = await generateUploadUrl();
+      const file = await (await fetch(asset.uri)).blob();
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': asset.mimeType ?? 'image/jpeg' },
+        body: file,
+      });
+      if (!response.ok) throw new Error(`Upload failed (${response.status})`);
+      const { storageId } = (await response.json()) as { storageId: Id<'_storage'> };
+      await createImage({
+        spaceId,
+        ...position,
+        storageId,
+        imageWidth: asset.width,
+        imageHeight: asset.height,
+      });
+    } catch (error) {
+      Alert.alert('Could not add the image', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -170,8 +214,18 @@ export default function SpaceScreen() {
         {items !== undefined && items.length === 0 ? (
           <View pointerEvents="none" style={styles.empty}>
             <ThemedText themeColor="textSecondary" style={{ textAlign: 'center' }}>
-              This space is empty. Add a note, a to-do list or a nested space below.
+              This space is empty. Add a note, a to-do list, an image or a nested space below.
             </ThemedText>
+          </View>
+        ) : null}
+
+        {uploading ? (
+          <View
+            pointerEvents="none"
+            accessibilityLiveRegion="polite"
+            style={[styles.uploading, { top: overlayTop + 44, backgroundColor: theme.background, borderColor: theme.border }]}>
+            <ActivityIndicator size="small" />
+            <Text style={{ color: theme.text, fontSize: 13, fontWeight: '600' }}>Uploading image…</Text>
           </View>
         ) : null}
 
@@ -197,6 +251,7 @@ export default function SpaceScreen() {
               params: { parentId: spaceId, x: String(position.x), y: String(position.y) },
             });
           }}
+          onAddImage={() => void addImage()}
           onResetView={() => canvasRef.current?.resetView()}
         />
       </View>
@@ -214,6 +269,17 @@ const styles = StyleSheet.create({
   crumb: {
     paddingHorizontal: Spacing.two + 2,
     paddingVertical: Spacing.one + 2,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  uploading: {
+    position: 'absolute',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
   },

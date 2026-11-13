@@ -31,6 +31,29 @@ export const create = mutation({
     model.createItem(ctx, await model.requireOwner(ctx), args),
 });
 
+/** A short-lived URL the app uploads a picked photo to. */
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await model.requireOwner(ctx);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/** Turns a file uploaded through generateUploadUrl into an image card. */
+export const createImage = mutation({
+  args: {
+    spaceId: v.id("spaces"),
+    x: v.optional(v.number()),
+    y: v.optional(v.number()),
+    storageId: v.id("_storage"),
+    imageWidth: v.number(),
+    imageHeight: v.number(),
+  },
+  handler: async (ctx, args) =>
+    model.createImageItem(ctx, await model.requireOwner(ctx), args),
+});
+
 export const update = mutation({
   args: {
     itemId: v.id("items"),

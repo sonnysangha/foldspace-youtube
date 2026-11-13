@@ -8,17 +8,19 @@ type Props = {
   onAddNote: () => void;
   onAddTodo: () => void;
   onAddSpace: () => void;
+  onAddImage: () => void;
   onResetView: () => void;
 };
 
 /** Floating bar for adding things to the canvas. */
-export function CanvasToolbar({ onAddNote, onAddTodo, onAddSpace, onResetView }: Props) {
+export function CanvasToolbar({ onAddNote, onAddTodo, onAddSpace, onAddImage, onResetView }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const tools = [
     { label: 'Note', glyph: '✎', onPress: onAddNote },
     { label: 'To-do', glyph: '☑', onPress: onAddTodo },
     { label: 'Space', glyph: '▣', onPress: onAddSpace },
+    { label: 'Image', glyph: '▨', onPress: onAddImage },
     { label: 'Centre', glyph: '⌖', onPress: onResetView },
   ];
   return (
@@ -52,7 +54,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     boxShadow: '0 6px 20px rgba(0, 0, 0, 0.16)',
   },
-  tool: { minWidth: 64, minHeight: 52, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.two },
+  tool: { minWidth: 58, minHeight: 52, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.two },
   glyph: { fontSize: 20, lineHeight: 24 },
   label: { fontSize: 12, fontWeight: '600' },
 });

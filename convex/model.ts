@@ -19,6 +19,8 @@ const DEFAULT_SIZE = {
   space: { width: 210, height: 150 },
 } as const;
 
+// The longest side of a freshly added image card, in canvas units.
+const MAX_IMAGE_SIDE = 260;
 const MAX_ITEMS_PER_SPACE = 500;
 const MAX_SPACES = 500;
 
@@ -102,11 +104,19 @@ export async function listItems(ctx: QueryCtx, ownerId: string, spaceId: Id<"spa
     .take(MAX_ITEMS_PER_SPACE);
   return await Promise.all(
     items.map(async (item) => {
-      if (item.content.kind !== "space") return { ...item, child: null };
+      if (item.content.kind === "image") {
+        // Signed URL for the stored file; null if the file has gone missing.
+        const imageUrl = await ctx.storage.getUrl(item.content.storageId);
+        return { ...item, child: null, imageUrl };
+      }
+      if (item.content.kind !== "space") {
+        return { ...item, child: null, imageUrl: null };
+      }
       const child = await ctx.db.get("spaces", item.content.childSpaceId);
       return {
         ...item,
         child: child ? { name: child.name, color: child.color } : null,
+        imageUrl: null,
       };
     }),
   );
@@ -197,6 +207,46 @@ export async function createItem(
   });
 }
 
+/**
+ * Places an uploaded file on the canvas as an image card. The card keeps the
+ * picture's aspect ratio, scaled so its longest side is MAX_IMAGE_SIDE.
+ */
+export async function createImageItem(
+  ctx: MutationCtx,
+  ownerId: string,
+  args: {
+    spaceId: Id<"spaces">;
+    x?: number;
+    y?: number;
+    storageId: Id<"_storage">;
+    imageWidth: number;
+    imageHeight: number;
+  },
+): Promise<Id<"items">> {
+  await loadSpace(ctx, ownerId, args.spaceId);
+  const file = await ctx.db.system.get("_storage", args.storageId);
+  if (file === null) throw new ConvexError("Upload not found");
+  if (file.contentType === undefined || !file.contentType.startsWith("image/")) {
+    await ctx.storage.delete(args.storageId);
+    throw new ConvexError("That file is not an image");
+  }
+  const auto = await nextPosition(ctx, args.spaceId);
+  const known = args.imageWidth > 0 && args.imageHeight > 0;
+  const scale = known
+    ? MAX_IMAGE_SIDE / Math.max(args.imageWidth, args.imageHeight)
+    : 1;
+  return await ctx.db.insert("items", {
+    ownerId,
+    spaceId: args.spaceId,
+    x: args.x ?? auto.x,
+    y: args.y ?? auto.y,
+    width: known ? Math.max(60, Math.round(args.imageWidth * scale)) : MAX_IMAGE_SIDE,
+    height: known ? Math.max(60, Math.round(args.imageHeight * scale)) : 195,
+    z: Date.now(),
+    content: { kind: "image", storageId: args.storageId },
+  });
+}
+
 export async function updateItem(
   ctx: MutationCtx,
   ownerId: string,
@@ -226,6 +276,9 @@ export async function updateItem(
 export async function removeItem(ctx: MutationCtx, ownerId: string, itemId: Id<"items">) {
   const item = await loadItem(ctx, ownerId, itemId);
   await ctx.db.delete("items", itemId);
+  if (item.content.kind === "image") {
+    await ctx.storage.delete(item.content.storageId);
+  }
   if (item.content.kind === "space") {
     await ctx.scheduler.runAfter(0, internal.agent.purgeSpace, {
       spaceId: item.content.childSpaceId,
