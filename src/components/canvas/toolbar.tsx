@@ -70,10 +70,15 @@ export function CanvasToolbar({
   const theme = useTheme();
   return (
     <Stack.Toolbar placement="bottom">
-      <Stack.Toolbar.Button icon={Icons.note} accessibilityLabel="Add Note" hidden={drawing} onPress={onAddNote} />
-      <Stack.Toolbar.Button icon={Icons.todo} accessibilityLabel="Add To-do" hidden={drawing} onPress={onAddTodo} />
-      <Stack.Toolbar.Button icon={Icons.space} accessibilityLabel="Add Space" hidden={drawing} onPress={onAddSpace} />
-      <Stack.Toolbar.Button icon={Icons.image} accessibilityLabel="Add Image" hidden={drawing} onPress={onAddImage} />
+      {/* Each button carries a text label: the system shows it when it moves an
+          item into the overflow menu, which it does from the end of the list
+          when the bar or rail runs out of room. The order is by importance. */}
+      <Stack.Toolbar.Button icon={Icons.note} accessibilityLabel="Add Note" hidden={drawing} onPress={onAddNote}>
+        Note
+      </Stack.Toolbar.Button>
+      <Stack.Toolbar.Button icon={Icons.todo} accessibilityLabel="Add To-do" hidden={drawing} onPress={onAddTodo}>
+        To-do
+      </Stack.Toolbar.Button>
       {/* Draw mode swaps the add tools for the pen colour and Undo. */}
       <Stack.Toolbar.Menu
         icon={Icons.palette}
@@ -92,17 +97,27 @@ export function CanvasToolbar({
         accessibilityLabel="Undo last stroke"
         hidden={!drawing}
         disabled={onUndoStroke === undefined}
-        onPress={onUndoStroke}
-      />
+        onPress={onUndoStroke}>
+        Undo
+      </Stack.Toolbar.Button>
       {/* `selected` is iOS only, so Android shows the state with its icon and tint. */}
       <Stack.Toolbar.Button
         icon={drawing ? Icons.stopDrawing : Icons.draw}
         accessibilityLabel={drawing ? 'Stop drawing' : 'Draw'}
         selected={drawing}
         tintColor={drawing && !ios ? theme.accent : undefined}
-        onPress={onToggleDraw}
-      />
-      <Stack.Toolbar.Button icon={Icons.centre} accessibilityLabel="Centre the canvas" onPress={onResetView} />
+        onPress={onToggleDraw}>
+        {drawing ? 'Stop drawing' : 'Draw'}
+      </Stack.Toolbar.Button>
+      <Stack.Toolbar.Button icon={Icons.space} accessibilityLabel="Add Space" hidden={drawing} onPress={onAddSpace}>
+        Space
+      </Stack.Toolbar.Button>
+      <Stack.Toolbar.Button icon={Icons.image} accessibilityLabel="Add Image" hidden={drawing} onPress={onAddImage}>
+        Image
+      </Stack.Toolbar.Button>
+      <Stack.Toolbar.Button icon={Icons.centre} accessibilityLabel="Centre the canvas" onPress={onResetView}>
+        Centre
+      </Stack.Toolbar.Button>
     </Stack.Toolbar>
   );
 }
