@@ -11,7 +11,7 @@ import type { CanvasItem } from './types';
 
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 3;
-const GRID_EXTENT = 6000;
+const GRID_EXTENT = 2400;
 const GRID_STEP = 28;
 
 export type CanvasHandle = {

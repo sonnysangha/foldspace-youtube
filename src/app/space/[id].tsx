@@ -2,6 +2,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { useRef, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActivityIndicator, Alert, type LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Canvas, type CanvasHandle } from '@/components/canvas/canvas';
@@ -21,6 +22,8 @@ export default function SpaceScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { isWide } = useLayout();
+  // The header is translucent and floats over the canvas, so overlays start below it.
+  const overlayTop = useSafeAreaInsets().top + 52;
   const canvasRef = useRef<CanvasHandle>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
@@ -140,7 +143,7 @@ export default function SpaceScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.breadcrumbs}
+            style={[styles.breadcrumbs, { top: overlayTop }]}
             contentContainerStyle={styles.breadcrumbsContent}>
             {found.path.map((crumb, index) => {
               const last = index === found.path.length - 1;
@@ -205,7 +208,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, flexDirection: 'row' },
   canvasPane: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  breadcrumbs: { position: 'absolute', top: Spacing.two, left: 0, right: 0, flexGrow: 0 },
+  breadcrumbs: { position: 'absolute', left: 0, right: 0, flexGrow: 0 },
   breadcrumbsContent: { paddingHorizontal: Spacing.three, alignItems: 'center', gap: Spacing.one },
   crumbRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   crumb: {
