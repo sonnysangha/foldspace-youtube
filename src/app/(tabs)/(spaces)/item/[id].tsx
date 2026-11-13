@@ -7,8 +7,8 @@ import { newTaskId, type Task } from '@/components/canvas/types';
 import { ThemedText } from '@/components/themed-text';
 import { NoteColors, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { api } from '../../../convex/_generated/api';
-import type { Doc, Id } from '../../../convex/_generated/dataModel';
+import { api } from '../../../../../convex/_generated/api';
+import type { Doc, Id } from '../../../../../convex/_generated/dataModel';
 
 /** Sheet for editing a note or a to-do list. */
 export default function ItemSheet() {

@@ -1,12 +1,12 @@
 import { ClerkProvider, useAuth } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
-import { ConvexReactClient, useConvexAuth } from 'convex/react';
+import { ConvexReactClient } from 'convex/react';
 import { ConvexProviderWithClerk } from 'convex/react-clerk';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { Stack } from 'expo-router/stack';
+import { DarkTheme, DefaultTheme, Slot, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
@@ -27,46 +27,11 @@ export default function RootLayout() {
       <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            {/* Android does not flip status bar icons with the theme by itself. */}
             <StatusBar style="auto" />
-            <RootStack />
+            <Slot />
           </ThemeProvider>
         </ConvexProviderWithClerk>
       </ClerkProvider>
     </GestureHandlerRootView>
-  );
-}
-
-function RootStack() {
-  const { isAuthenticated } = useConvexAuth();
-  return (
-    <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
-      <Stack.Screen name="index" options={{ title: 'Foldspace' }} />
-      <Stack.Protected guard={isAuthenticated}>
-        <Stack.Screen name="space/[id]" options={{ title: '' }} />
-        {/* Clerk's native profile draws its own navigation bar. */}
-        <Stack.Screen name="profile" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="new-space"
-          options={{
-            title: 'New space',
-            presentation: 'formSheet',
-            sheetGrabberVisible: true,
-            sheetCornerRadius: 24,
-            sheetAllowedDetents: [0.5],
-          }}
-        />
-        <Stack.Screen
-          name="item/[id]"
-          options={{
-            title: 'Edit',
-            presentation: 'formSheet',
-            sheetGrabberVisible: true,
-            sheetCornerRadius: 24,
-            sheetAllowedDetents: [0.6, 1],
-          }}
-        />
-      </Stack.Protected>
-    </Stack>
   );
 }

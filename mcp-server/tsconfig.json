@@ -6,8 +6,9 @@
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["index.ts", "lib"]
+  "include": ["index.ts", "lib", "test"]
 }

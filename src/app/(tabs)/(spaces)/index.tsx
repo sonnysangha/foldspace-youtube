@@ -1,16 +1,16 @@
-import { useUser } from '@clerk/expo';
 import { useConvexAuth, useQuery } from 'convex/react';
-import { Image } from 'expo-image';
 import { Link, useRouter } from 'expo-router';
 import { Stack } from 'expo-router/stack';
+import { useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Welcome } from '@/components/auth/welcome';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useLayout } from '@/hooks/use-layout';
 import { useTheme } from '@/hooks/use-theme';
-import { api } from '../../convex/_generated/api';
+import { api } from '../../../../convex/_generated/api';
 
 export default function HomeScreen() {
   const { isLoading, isAuthenticated } = useConvexAuth();
@@ -38,33 +38,23 @@ export default function HomeScreen() {
 function SpacesHome() {
   const theme = useTheme();
   const router = useRouter();
-  const { user } = useUser();
   const { width } = useLayout();
+  const [paneWidth, setPaneWidth] = useState(width);
+  const insets = useSafeAreaInsets();
   const spaces = useQuery(api.spaces.listRoot);
 
   // As many ~170pt columns as fit, so phones get 2 and unfolded foldables get 4+.
-  const columns = Math.max(2, Math.floor(width / 190));
-  const cardWidth = (width - Spacing.three * (columns + 1)) / columns;
+  const contentWidth = paneWidth - insets.left - insets.right;
+  const columns = Math.max(1, Math.floor(contentWidth / 190));
+  const cardWidth = (contentWidth - Spacing.three * (columns + 1)) / columns;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View onLayout={(event) => setPaneWidth(event.nativeEvent.layout.width)} style={{ flex: 1, backgroundColor: theme.background }}>
       <Stack.Screen
         options={{
           headerShown: true,
           title: 'Spaces',
-          headerLeft: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Profile"
-              hitSlop={8}
-              onPress={() => router.push('/profile')}
-              style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
-              {user?.imageUrl ? (
-                <Image source={{ uri: user.imageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
-              ) : null}
-            </Pressable>
-          ),
-          headerRight: () => (
+          headerRight: Platform.OS === 'ios' ? undefined : () => (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="New space"
@@ -75,6 +65,11 @@ function SpacesHome() {
           ),
         }}
       />
+      {Platform.OS === 'ios' ? (
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button icon="plus" accessibilityLabel="New space" onPress={() => router.push('/new-space')} />
+        </Stack.Toolbar>
+      ) : null}
       {spaces === undefined ? (
         <View style={styles.centered}>
           <ActivityIndicator />
@@ -86,8 +81,14 @@ function SpacesHome() {
           numColumns={columns}
           keyExtractor={(space) => space._id}
           contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three, flexGrow: 1 }}
-          columnWrapperStyle={{ gap: Spacing.three }}
+          contentContainerStyle={{
+            padding: Spacing.three,
+            paddingLeft: insets.left + Spacing.three,
+            paddingRight: insets.right + Spacing.three,
+            gap: Spacing.three,
+            flexGrow: 1,
+          }}
+          columnWrapperStyle={columns > 1 ? { gap: Spacing.three } : undefined}
           ListEmptyComponent={
             <View style={styles.centered}>
               <ThemedText type="subtitle" style={{ textAlign: 'center' }}>
@@ -100,8 +101,8 @@ function SpacesHome() {
           }
           renderItem={({ item }) => (
             <Link href={{ pathname: '/space/[id]', params: { id: item._id } }} asChild>
-              {/* Link asChild drops a function `style` on Android, so the pressed
-                  state is applied to an inner View instead of the Pressable. */}
+              {/* Link asChild drops a function `style`, so the pressed state is
+                  applied to an inner View instead of the Pressable. */}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Open space ${item.name}`}
@@ -128,14 +129,6 @@ function SpacesHome() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.four },
-  // Android's header puts the title flush against headerLeft, so add a gap there.
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginRight: Platform.OS === 'android' ? Spacing.three : 0,
-  },
   card: {
     height: 130,
     borderRadius: Radius.large,
