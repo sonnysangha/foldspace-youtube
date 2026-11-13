@@ -1,0 +1,2 @@
+# Standalone package: keeps the MCP server's dependencies out of the Expo app.
+packages: []
