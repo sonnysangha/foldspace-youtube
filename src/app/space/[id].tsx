@@ -1,4 +1,6 @@
+import { useAuth } from '@clerk/expo';
 import { useMutation, useQuery } from 'convex/react';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { useRef, useState } from 'react';
@@ -18,6 +20,7 @@ import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 
 export default function SpaceScreen() {
+  const { getToken, sessionClaims } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const spaceId = id as Id<'spaces'>;
   const theme = useTheme();
@@ -63,6 +66,7 @@ export default function SpaceScreen() {
         z: top,
         content: args.content,
         child: null,
+        imageUrl: null,
       },
     ]);
   });
@@ -76,6 +80,8 @@ export default function SpaceScreen() {
     );
   });
   const removeSpace = useMutation(api.spaces.remove);
+  const createImage = useMutation(api.items.createImage);
+  const [uploading, setUploading] = useState(false);
 
   // Move the card in the local cache straight away so it never snaps back
   // while the server confirms the new position.
@@ -116,6 +122,48 @@ export default function SpaceScreen() {
       router.push({ pathname: '/space/[id]', params: { id: item.content.childSpaceId } });
     } else if (item.content.kind === 'note' || item.content.kind === 'todo') {
       router.push({ pathname: '/item/[id]', params: { id: item._id } });
+    } else if (item.content.kind === 'image') {
+      Alert.alert('Image', undefined, [
+        { text: 'Delete image', style: 'destructive', onPress: () => void removeItem({ itemId: item._id }) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  }
+
+  /** Pick a photo, upload it to Convex file storage, then place it on the canvas. */
+  async function addImage() {
+    if (uploading) return;
+    setUploading(true);
+    try {
+      const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+      if (picked.canceled) return;
+      const asset = picked.assets[0];
+      // Keep the drop position stable while the upload is in progress.
+      const longest = Math.max(asset.width, asset.height) || 260;
+      const position = spot((asset.width / longest) * 260 || 260, (asset.height / longest) * 260 || 195);
+      const siteUrl = process.env.EXPO_PUBLIC_CONVEX_SITE_URL;
+      if (!siteUrl) throw new Error('Image uploads are not configured.');
+      const token = await getToken(sessionClaims?.aud === 'convex' ? {} : { template: 'convex' });
+      if (!token) throw new Error('Please sign in again to upload an image.');
+      const file = await (await fetch(asset.uri)).blob();
+      const response = await fetch(`${siteUrl}/images/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': asset.mimeType ?? 'image/jpeg', Authorization: `Bearer ${token}` },
+        body: file,
+      });
+      if (!response.ok) throw new Error(`Upload failed (${response.status})`);
+      const { storageId } = (await response.json()) as { storageId: Id<'_storage'> };
+      await createImage({
+        spaceId,
+        ...position,
+        storageId,
+        imageWidth: asset.width,
+        imageHeight: asset.height,
+      });
+    } catch (error) {
+      Alert.alert('Could not add the image', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -243,8 +291,18 @@ export default function SpaceScreen() {
         {items !== undefined && items.length === 0 ? (
           <View pointerEvents="none" style={styles.empty}>
             <ThemedText themeColor="textSecondary" style={{ textAlign: 'center' }}>
-              This space is empty. Add a note, a to-do list or a nested space below.
+              This space is empty. Add a note, a to-do list, an image or a nested space below.
             </ThemedText>
+          </View>
+        ) : null}
+
+        {uploading ? (
+          <View
+            pointerEvents="none"
+            accessibilityLiveRegion="polite"
+            style={[styles.uploading, { top: overlayTop + 44, backgroundColor: theme.background, borderColor: theme.border }]}>
+            <ActivityIndicator size="small" />
+            <Text style={{ color: theme.text, fontSize: 13, fontWeight: '600' }}>Uploading image…</Text>
           </View>
         ) : null}
 
@@ -270,6 +328,7 @@ export default function SpaceScreen() {
               params: { parentId: spaceId, x: String(position.x), y: String(position.y) },
             });
           }}
+          onAddImage={() => void addImage()}
           onResetView={() => canvasRef.current?.resetView()}
           drawing={drawing}
           onToggleDraw={toggleDraw}
@@ -292,6 +351,17 @@ const styles = StyleSheet.create({
   crumb: {
     paddingHorizontal: Spacing.two + 2,
     paddingVertical: Spacing.one + 2,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  uploading: {
+    position: 'absolute',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
   },

@@ -9,6 +9,7 @@ type Props = {
   onAddNote: () => void;
   onAddTodo: () => void;
   onAddSpace: () => void;
+  onAddImage: () => void;
   onResetView: () => void;
   /** Whether Draw mode is on. */
   drawing: boolean;
@@ -24,6 +25,7 @@ export function CanvasToolbar({
   onAddNote,
   onAddTodo,
   onAddSpace,
+  onAddImage,
   onResetView,
   drawing,
   onToggleDraw,
@@ -37,6 +39,7 @@ export function CanvasToolbar({
     { label: 'Note', glyph: '✎', hint: 'Add Note', onPress: onAddNote, active: false },
     { label: 'To-do', glyph: '☑', hint: 'Add To-do', onPress: onAddTodo, active: false },
     { label: 'Space', glyph: '▣', hint: 'Add Space', onPress: onAddSpace, active: false },
+    { label: 'Image', glyph: '▨', hint: 'Add Image', onPress: onAddImage, active: false },
     { label: 'Draw', glyph: '〰', hint: drawing ? 'Stop drawing' : 'Draw', onPress: onToggleDraw, active: drawing },
     { label: 'Centre', glyph: '⌖', hint: 'Centre the canvas', onPress: onResetView, active: false },
   ];
@@ -117,7 +120,7 @@ const styles = StyleSheet.create({
   divider: { width: StyleSheet.hairlineWidth, height: 22 },
   undo: { minHeight: 32, justifyContent: 'center', paddingHorizontal: Spacing.two },
   tool: {
-    minWidth: 58,
+    minWidth: 52,
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',

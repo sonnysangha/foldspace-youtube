@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -58,6 +59,29 @@ export function ItemCard({ item, onOpen, onToggleTask }: CardProps) {
     );
   }
 
+  if (content.kind === 'image') {
+    return (
+      <Pressable
+        accessibilityRole="imagebutton"
+        accessibilityLabel="Image"
+        onPress={onOpen}
+        style={[styles.card, size, styles.image]}>
+        {item.imageUrl ? (
+          <Image
+            source={{ uri: item.imageUrl }}
+            // The signed URL changes between loads; the item id does not.
+            recyclingKey={item._id}
+            contentFit="cover"
+            transition={150}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : (
+          <Text style={[styles.taskText, styles.placeholder]}>Image unavailable</Text>
+        )}
+      </Pressable>
+    );
+  }
+
   if (content.kind === 'drawing') {
     return (
       <DrawingCard
@@ -70,7 +94,6 @@ export function ItemCard({ item, onOpen, onToggleTask }: CardProps) {
     );
   }
 
-  // Other kinds (images) get their own cards as those features land.
   if (content.kind !== 'space') return null;
 
   const color = item.child?.color ?? '#6C5CE7';
@@ -149,6 +172,7 @@ const styles = StyleSheet.create({
   check: { color: '#FFFFFF', fontSize: 13, lineHeight: 15, fontWeight: '700' },
   taskText: { color: CardInk.text, fontSize: 15, flex: 1 },
   taskDone: { color: CardInk.secondary, textDecorationLine: 'line-through' },
+  image: { padding: 0, backgroundColor: '#E9EAF0', alignItems: 'center', justifyContent: 'center' },
   space: { justifyContent: 'flex-end' },
   spaceTab: {
     position: 'absolute',

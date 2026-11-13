@@ -128,6 +128,9 @@ export const purgeSpace = internalMutation({
           spaceId: item.content.childSpaceId,
         });
       }
+      if (item.content.kind === "image") {
+        await ctx.storage.delete(item.content.storageId);
+      }
       await ctx.db.delete("items", item._id);
     }
     if (batch.length === 100) {

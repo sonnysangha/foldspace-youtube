@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalMutation, mutation, query } from "./_generated/server";
 import * as model from "./model";
 import { drawingContent, noteContent, todoContent } from "./schema";
 
@@ -31,6 +32,45 @@ export const create = mutation({
   },
   handler: async (ctx, args) =>
     model.createItem(ctx, await model.requireOwner(ctx), args),
+});
+
+/** Called only after the HTTP endpoint has authenticated and stored the bytes. */
+export const registerImageUpload = internalMutation({
+  args: { ownerId: v.string(), storageId: v.id("_storage") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const uploadId = await ctx.db.insert("imageUploads", args);
+    await ctx.scheduler.runAfter(60 * 60 * 1000, internal.items.expireImageUpload, { uploadId });
+    return null;
+  },
+});
+
+export const expireImageUpload = internalMutation({
+  args: { uploadId: v.id("imageUploads") },
+  returns: v.null(),
+  handler: async (ctx, { uploadId }) => {
+    const upload = await ctx.db.get("imageUploads", uploadId);
+    if (upload) {
+      await ctx.storage.delete(upload.storageId);
+      await ctx.db.delete("imageUploads", uploadId);
+    }
+    return null;
+  },
+});
+
+/** Consumes an authenticated upload belonging to the caller. */
+export const createImage = mutation({
+  args: {
+    spaceId: v.id("spaces"),
+    x: v.optional(v.number()),
+    y: v.optional(v.number()),
+    storageId: v.id("_storage"),
+    imageWidth: v.number(),
+    imageHeight: v.number(),
+  },
+  returns: v.id("items"),
+  handler: async (ctx, args) =>
+    model.createImageItem(ctx, await model.requireOwner(ctx), args),
 });
 
 export const update = mutation({
