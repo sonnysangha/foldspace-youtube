@@ -1,6 +1,9 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { CardInk, Radius, Spacing } from '@/constants/theme';
+import { pointsToPath } from './drawing';
 import type { CanvasItem, Task } from './types';
 
 type CardProps = {
@@ -55,7 +58,19 @@ export function ItemCard({ item, onOpen, onToggleTask }: CardProps) {
     );
   }
 
-  // Other kinds (drawings, images) get their own cards as those features land.
+  if (content.kind === 'drawing') {
+    return (
+      <DrawingCard
+        width={item.width}
+        height={item.height}
+        color={content.color}
+        strokeWidth={content.strokeWidth}
+        points={content.points}
+      />
+    );
+  }
+
+  // Other kinds (images) get their own cards as those features land.
   if (content.kind !== 'space') return null;
 
   const color = item.child?.color ?? '#6C5CE7';
@@ -71,6 +86,20 @@ export function ItemCard({ item, onOpen, onToggleTask }: CardProps) {
       </Text>
       <Text style={styles.spaceHint}>Tap to open ›</Text>
     </Pressable>
+  );
+}
+
+type DrawingProps = { width: number; height: number; color: string; strokeWidth: number; points: number[] };
+
+/** A freehand stroke. It has no card behind it, just the ink. */
+function DrawingCard({ width, height, color, strokeWidth, points }: DrawingProps) {
+  const d = useMemo(() => pointsToPath(points), [points]);
+  return (
+    <View accessible accessibilityRole="image" accessibilityLabel="Drawing" style={{ width, height }}>
+      <Svg width={width} height={height}>
+        <Path d={d} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </Svg>
+    </View>
   );
 }
 

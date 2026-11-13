@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActivityIndicator, Alert, type LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Canvas, type CanvasHandle } from '@/components/canvas/canvas';
+import { DrawColors, DrawStrokeWidth, type Stroke } from '@/components/canvas/drawing';
 import { CanvasToolbar } from '@/components/canvas/toolbar';
 import type { CanvasItem } from '@/components/canvas/types';
 import { SpaceSidebar } from '@/components/space-sidebar';
@@ -29,7 +30,51 @@ export default function SpaceScreen() {
 
   const found = useQuery(api.spaces.get, { spaceId });
   const items = useQuery(api.items.list, found ? { spaceId } : 'skip');
-  const createItem = useMutation(api.items.create);
+  // Draw mode: the pen colour, and the strokes drawn since it was switched on
+  // (newest last) so Undo can take them back.
+  const [drawing, setDrawing] = useState(false);
+  const [drawColor, setDrawColor] = useState<string>(DrawColors[0]);
+  const [strokeIds, setStrokeIds] = useState<Id<'items'>[]>([]);
+
+  // Show a finished stroke straight away instead of waiting for the server.
+  const createItem = useMutation(api.items.create).withOptimisticUpdate((store, args) => {
+    const current = store.getQuery(api.items.list, { spaceId });
+    if (current === undefined || args.content.kind !== 'drawing') return;
+    const { points, strokeWidth } = args.content;
+    let width = 0;
+    let height = 0;
+    for (let i = 0; i + 1 < points.length; i += 2) {
+      width = Math.max(width, points[i]);
+      height = Math.max(height, points[i + 1]);
+    }
+    // Stack it above everything else, where the server will put it too.
+    const top = current.reduce((max, item) => Math.max(max, item.z), 0) + 1;
+    store.setQuery(api.items.list, { spaceId }, [
+      ...current,
+      {
+        _id: `optimistic-${top}` as Id<'items'>,
+        _creationTime: top,
+        ownerId: '',
+        spaceId,
+        x: args.x ?? 0,
+        y: args.y ?? 0,
+        width: Math.ceil(width + strokeWidth),
+        height: Math.ceil(height + strokeWidth),
+        z: top,
+        content: args.content,
+        child: null,
+      },
+    ]);
+  });
+  const removeItem = useMutation(api.items.remove).withOptimisticUpdate((store, args) => {
+    const current = store.getQuery(api.items.list, { spaceId });
+    if (current === undefined) return;
+    store.setQuery(
+      api.items.list,
+      { spaceId },
+      current.filter((item) => item._id !== args.itemId),
+    );
+  });
   const removeSpace = useMutation(api.spaces.remove);
 
   // Move the card in the local cache straight away so it never snaps back
@@ -85,6 +130,32 @@ export default function SpaceScreen() {
     });
   }
 
+  async function saveStroke(stroke: Stroke) {
+    try {
+      const itemId = await createItem({
+        spaceId,
+        x: stroke.x,
+        y: stroke.y,
+        content: { kind: 'drawing', color: drawColor, strokeWidth: DrawStrokeWidth, points: stroke.points },
+      });
+      setStrokeIds((ids) => [...ids, itemId]);
+    } catch {
+      Alert.alert('Could not save that stroke', 'Check your connection and try again.');
+    }
+  }
+
+  function undoStroke() {
+    const itemId = strokeIds[strokeIds.length - 1];
+    if (itemId === undefined) return;
+    setStrokeIds((ids) => ids.slice(0, -1));
+    void removeItem({ itemId });
+  }
+
+  function toggleDraw() {
+    setDrawing((on) => !on);
+    setStrokeIds([]);
+  }
+
   function confirmDelete() {
     Alert.alert('Delete this space?', 'Everything inside it, including nested spaces, will be deleted.', [
       { text: 'Cancel', style: 'cancel' },
@@ -137,6 +208,8 @@ export default function SpaceScreen() {
           onMoveItem={(item, x, y) => void updateItem({ itemId: item._id, x, y })}
           onOpenItem={openItem}
           onToggleTask={toggleTask}
+          pen={drawing ? { color: drawColor, strokeWidth: DrawStrokeWidth } : null}
+          onDrawStroke={(stroke) => void saveStroke(stroke)}
         />
 
         {found.path.length > 1 ? (
@@ -198,6 +271,11 @@ export default function SpaceScreen() {
             });
           }}
           onResetView={() => canvasRef.current?.resetView()}
+          drawing={drawing}
+          onToggleDraw={toggleDraw}
+          drawColor={drawColor}
+          onPickDrawColor={setDrawColor}
+          onUndoStroke={strokeIds.length > 0 ? undoStroke : undefined}
         />
       </View>
     </View>
