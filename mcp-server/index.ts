@@ -18,10 +18,15 @@ import {
 } from './lib/mcp-auth.ts'
 
 assertConfigured()
+console.info('Foldspace MCP runtime', process.version)
 
 const app = express()
 app.use(cors({ exposedHeaders: ['WWW-Authenticate'] }))
 app.use(express.json())
+
+app.get('/health', (_, res) => {
+  res.json({ status: 'ok', service: 'foldspace-mcp' })
+})
 
 const NOTE_COLORS = ['#FFF3B0', '#FFD6E0', '#D7F9E9', '#DCEBFF', '#EADCFF']
 const position = {
@@ -278,6 +283,10 @@ app.get(
 )
 app.get('/.well-known/oauth-authorization-server', authServerMetadataHandlerClerk)
 
-app.listen(PORT, () => {
-  console.log(`Foldspace MCP server listening at ${MCP_RESOURCE_URL}`)
-})
+export default app
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Foldspace MCP server listening at ${MCP_RESOURCE_URL}`)
+  })
+}

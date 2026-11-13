@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { useRef, useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActivityIndicator, Alert, type LayoutChangeEvent, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Canvas, type CanvasHandle } from '@/components/canvas/canvas';
@@ -16,8 +16,8 @@ import { ThemedText } from '@/components/themed-text';
 import { NoteColors, Spacing } from '@/constants/theme';
 import { useLayout } from '@/hooks/use-layout';
 import { useTheme } from '@/hooks/use-theme';
-import { api } from '../../../convex/_generated/api';
-import type { Id } from '../../../convex/_generated/dataModel';
+import { api } from '../../../../../convex/_generated/api';
+import type { Id } from '../../../../../convex/_generated/dataModel';
 
 export default function SpaceScreen() {
   const { getToken, sessionClaims } = useAuth();
@@ -237,18 +237,23 @@ export default function SpaceScreen() {
   }
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView edges={['left', 'right']} style={styles.screen}>
       <Stack.Screen
         options={{
           title: found.space.name,
-          headerRight: () => (
+          headerRight: Platform.OS === 'ios' ? undefined : () => (
             <Pressable accessibilityRole="button" accessibilityLabel="Delete space" hitSlop={12} onPress={confirmDelete}>
               <Text style={{ color: theme.danger, fontSize: 15, fontWeight: '600' }}>Delete</Text>
             </Pressable>
           ),
         }}
       />
-      {isWide ? <SpaceSidebar activeId={spaceId} topInset={overlayTop} /> : null}
+      {Platform.OS === 'ios' ? (
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button icon="trash" accessibilityLabel="Delete space" tintColor={theme.danger} onPress={confirmDelete} />
+        </Stack.Toolbar>
+      ) : null}
+      {isWide && Platform.OS !== 'ios' ? <SpaceSidebar activeId={spaceId} topInset={overlayTop} /> : null}
       <View style={styles.canvasPane} onLayout={onLayout}>
         <Canvas
           ref={canvasRef}
@@ -339,7 +344,7 @@ export default function SpaceScreen() {
           onUndoStroke={strokeIds.length > 0 ? undoStroke : undefined}
         />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

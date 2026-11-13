@@ -1,0 +1,11 @@
+Local iPhone Duo, iOS 27.2.iPhone19.4
+App: com.sonnysangha.foldspace; current JS served by Metro localhost:8094.
+Native device log captured during navigation at 14:14 Dubai on 2026-11-13.
+
+Relevant native warning:
+2026-11-13 14:14:16.143 Df Foldspace[27137:bfbafd] (UIKitCore) Unbalanced calls to begin/end appearance transitions for <_TtGC9ClerkExpoP10$111c4a55828ClerkNativeHostingControllerGV7SwiftUI15ModifiedContentVS_32ClerkInlineUserButtonWrapperViewGVS1_30_EnvironmentKeyWritingModifierGSqC8ClerkKit5Clerk____: 0x1565e4a00>.
+
+No current-run crash or JS exception was observed. An older crash at 13:43 predates this run and is not attributed to this reproduction.
+
+Retest after moving Clerk UserButton out of native headerLeft:
+Local process37921, launched14:15 Dubai. Root CUA reported successful open/back and new-space/create/home round trips at14:16. No repeated unbalanced Clerk appearance warning or uncaught exception observed in this process through this check.
