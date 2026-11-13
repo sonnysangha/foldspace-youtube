@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/expo';
+import Delete from '@expo/material-symbols/delete.xml';
 import { useMutation, useQuery } from 'convex/react';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -238,21 +239,15 @@ export default function SpaceScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right']} style={styles.screen}>
-      <Stack.Screen
-        options={{
-          title: found.space.name,
-          headerRight: Platform.OS === 'ios' ? undefined : () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="Delete space" hitSlop={12} onPress={confirmDelete}>
-              <Text style={{ color: theme.danger, fontSize: 15, fontWeight: '600' }}>Delete</Text>
-            </Pressable>
-          ),
-        }}
-      />
-      {Platform.OS === 'ios' ? (
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.Button icon="trash" accessibilityLabel="Delete space" tintColor={theme.danger} onPress={confirmDelete} />
-        </Stack.Toolbar>
-      ) : null}
+      <Stack.Screen options={{ title: found.space.name }} />
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon={process.env.EXPO_OS === 'ios' ? 'trash' : Delete}
+          accessibilityLabel="Delete space"
+          tintColor={theme.danger}
+          onPress={confirmDelete}
+        />
+      </Stack.Toolbar>
       {isWide && Platform.OS !== 'ios' ? <SpaceSidebar activeId={spaceId} topInset={overlayTop} /> : null}
       <View style={styles.canvasPane} onLayout={onLayout}>
         <Canvas

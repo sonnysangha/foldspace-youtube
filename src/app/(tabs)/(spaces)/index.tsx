@@ -1,8 +1,9 @@
+import Add from '@expo/material-symbols/add.xml';
 import { useConvexAuth, useQuery } from 'convex/react';
 import { Link, useRouter } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Welcome } from '@/components/auth/welcome';
@@ -50,26 +51,14 @@ function SpacesHome() {
 
   return (
     <View onLayout={(event) => setPaneWidth(event.nativeEvent.layout.width)} style={{ flex: 1, backgroundColor: theme.background }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: 'Spaces',
-          headerRight: Platform.OS === 'ios' ? undefined : () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="New space"
-              hitSlop={12}
-              onPress={() => router.push('/new-space')}>
-              <ThemedText style={{ color: theme.accent, fontSize: 28, lineHeight: 30 }}>＋</ThemedText>
-            </Pressable>
-          ),
-        }}
-      />
-      {Platform.OS === 'ios' ? (
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.Button icon="plus" accessibilityLabel="New space" onPress={() => router.push('/new-space')} />
-        </Stack.Toolbar>
-      ) : null}
+      <Stack.Screen options={{ headerShown: true, title: 'Spaces' }} />
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon={process.env.EXPO_OS === 'ios' ? 'plus' : Add}
+          accessibilityLabel="New space"
+          onPress={() => router.push('/new-space')}
+        />
+      </Stack.Toolbar>
       {spaces === undefined ? (
         <View style={styles.centered}>
           <ActivityIndicator />

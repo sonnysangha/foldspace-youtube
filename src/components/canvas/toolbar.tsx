@@ -1,7 +1,14 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Checklist from '@expo/material-symbols/checklist.xml';
+import CenterFocusStrong from '@expo/material-symbols/center_focus_strong.xml';
+import Draw from '@expo/material-symbols/draw.xml';
+import EditOff from '@expo/material-symbols/edit_off.xml';
+import Image from '@expo/material-symbols/image.xml';
+import Palette from '@expo/material-symbols/palette.xml';
+import SpaceDashboard from '@expo/material-symbols/space_dashboard.xml';
+import StickyNote from '@expo/material-symbols/sticky_note_2.xml';
+import Undo from '@expo/material-symbols/undo.xml';
+import { Stack } from 'expo-router/stack';
 
-import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { DrawColors } from './drawing';
 
@@ -20,7 +27,34 @@ type Props = {
   onUndoStroke?: () => void;
 };
 
-/** Floating bar for adding things to the canvas. */
+// Metro replaces `process.env.EXPO_OS` at build time, so each platform only
+// bundles its own icon set: SF Symbols on iOS, Material Symbols on Android.
+const ios = process.env.EXPO_OS === 'ios';
+const Icons = {
+  note: ios ? 'note.text' : StickyNote,
+  todo: ios ? 'checklist' : Checklist,
+  space: ios ? 'plus.square.on.square' : SpaceDashboard,
+  image: ios ? 'photo' : Image,
+  draw: ios ? 'pencil.tip' : Draw,
+  stopDrawing: ios ? 'pencil.tip' : EditOff,
+  centre: ios ? 'scope' : CenterFocusStrong,
+  palette: ios ? 'paintpalette' : Palette,
+  undo: ios ? 'arrow.uturn.backward' : Undo,
+} as const;
+
+/** Names for `DrawColors`, in the same order, for the pen colour menu. */
+const DrawColorNames = ['Purple', 'Green', 'Orange', 'Blue', 'Pink'];
+
+/**
+ * The canvas tools, in the system bottom toolbar of the space screen.
+ *
+ * Being a native toolbar, the system places it: along the bottom on phones and
+ * Android, and in the vertical rail on a folded or landscape iPhone Duo. Every
+ * item has an icon so it can move into that rail.
+ *
+ * Must be rendered by a screen (not a layout), which `Stack.Toolbar` requires
+ * for the bottom placement.
+ */
 export function CanvasToolbar({
   onAddNote,
   onAddTodo,
@@ -34,99 +68,41 @@ export function CanvasToolbar({
   onUndoStroke,
 }: Props) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const tools = [
-    { label: 'Note', glyph: '✎', hint: 'Add Note', onPress: onAddNote, active: false },
-    { label: 'To-do', glyph: '☑', hint: 'Add To-do', onPress: onAddTodo, active: false },
-    { label: 'Space', glyph: '▣', hint: 'Add Space', onPress: onAddSpace, active: false },
-    { label: 'Image', glyph: '▨', hint: 'Add Image', onPress: onAddImage, active: false },
-    { label: 'Draw', glyph: '〰', hint: drawing ? 'Stop drawing' : 'Draw', onPress: onToggleDraw, active: drawing },
-    { label: 'Centre', glyph: '⌖', hint: 'Centre the canvas', onPress: onResetView, active: false },
-  ];
-  const surface = { backgroundColor: theme.background, borderColor: theme.border };
   return (
-    <View
-      pointerEvents="box-none"
-      style={[styles.wrap, { bottom: Math.max(insets.bottom, Spacing.three) }]}>
-      {drawing ? (
-        <View style={[styles.bar, styles.pens, surface]}>
-          {DrawColors.map((color) => (
-            <Pressable
-              key={color}
-              accessibilityRole="button"
-              accessibilityLabel={`Pen colour ${color}`}
-              accessibilityState={{ selected: color === drawColor }}
-              hitSlop={6}
-              onPress={() => onPickDrawColor(color)}
-              style={[styles.swatchRing, color === drawColor && { borderColor: theme.text }]}>
-              <View style={[styles.swatch, { backgroundColor: color }]} />
-            </Pressable>
-          ))}
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Undo last stroke"
-            disabled={onUndoStroke === undefined}
-            hitSlop={6}
-            onPress={onUndoStroke}
-            style={({ pressed }) => [styles.undo, { opacity: onUndoStroke === undefined ? 0.35 : pressed ? 0.6 : 1 }]}>
-            <Text style={[styles.label, { color: theme.text }]}>Undo</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      <View style={[styles.bar, surface]}>
-        {tools.map((tool) => (
-          <Pressable
-            key={tool.label}
-            accessibilityRole="button"
-            accessibilityLabel={tool.hint}
-            accessibilityState={{ selected: tool.active }}
-            onPress={tool.onPress}
-            style={({ pressed }) => [
-              styles.tool,
-              tool.active && { backgroundColor: theme.accent },
-              { transform: [{ scale: pressed ? 0.94 : 1 }] },
-            ]}>
-            <Text style={[styles.glyph, { color: tool.active ? theme.onAccent : theme.accent }]}>{tool.glyph}</Text>
-            <Text style={[styles.label, { color: tool.active ? theme.onAccent : theme.text }]}>{tool.label}</Text>
-          </Pressable>
+    <Stack.Toolbar placement="bottom">
+      <Stack.Toolbar.Button icon={Icons.note} accessibilityLabel="Add Note" hidden={drawing} onPress={onAddNote} />
+      <Stack.Toolbar.Button icon={Icons.todo} accessibilityLabel="Add To-do" hidden={drawing} onPress={onAddTodo} />
+      <Stack.Toolbar.Button icon={Icons.space} accessibilityLabel="Add Space" hidden={drawing} onPress={onAddSpace} />
+      <Stack.Toolbar.Button icon={Icons.image} accessibilityLabel="Add Image" hidden={drawing} onPress={onAddImage} />
+      {/* Draw mode swaps the add tools for the pen colour and Undo. */}
+      <Stack.Toolbar.Menu
+        icon={Icons.palette}
+        title="Pen colour"
+        accessibilityLabel="Pen colour"
+        tintColor={drawColor}
+        hidden={!drawing}>
+        {DrawColors.map((color, index) => (
+          <Stack.Toolbar.MenuAction key={color} isOn={color === drawColor} onPress={() => onPickDrawColor(color)}>
+            {DrawColorNames[index]}
+          </Stack.Toolbar.MenuAction>
         ))}
-      </View>
-    </View>
+      </Stack.Toolbar.Menu>
+      <Stack.Toolbar.Button
+        icon={Icons.undo}
+        accessibilityLabel="Undo last stroke"
+        hidden={!drawing}
+        disabled={onUndoStroke === undefined}
+        onPress={onUndoStroke}
+      />
+      {/* `selected` is iOS only, so Android shows the state with its icon and tint. */}
+      <Stack.Toolbar.Button
+        icon={drawing ? Icons.stopDrawing : Icons.draw}
+        accessibilityLabel={drawing ? 'Stop drawing' : 'Draw'}
+        selected={drawing}
+        tintColor={drawing && !ios ? theme.accent : undefined}
+        onPress={onToggleDraw}
+      />
+      <Stack.Toolbar.Button icon={Icons.centre} accessibilityLabel="Centre the canvas" onPress={onResetView} />
+    </Stack.Toolbar>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: Spacing.two },
-  bar: {
-    flexDirection: 'row',
-    borderRadius: Radius.large,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
-    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.16)',
-  },
-  pens: { alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two },
-  swatchRing: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  swatch: { width: 22, height: 22, borderRadius: 11 },
-  divider: { width: StyleSheet.hairlineWidth, height: 22 },
-  undo: { minHeight: 32, justifyContent: 'center', paddingHorizontal: Spacing.two },
-  tool: {
-    minWidth: 52,
-    minHeight: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.two,
-    borderRadius: Radius.medium,
-  },
-  glyph: { fontSize: 20, lineHeight: 24 },
-  label: { fontSize: 12, fontWeight: '600' },
-});
