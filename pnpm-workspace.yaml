@@ -1,2 +1,11 @@
 allowBuilds:
+  # Their install scripts only print funding notices, so keep them off.
+  browser-tabs-lock: false
+  core-js: false
   esbuild: true
+# pnpm refuses packages published in the last 24 hours. These official Expo
+# releases are pinned in the lockfile, so allow them through that check.
+minimumReleaseAgeExclude:
+  - expo
+  - expo-dev-client
+  - expo-dev-launcher

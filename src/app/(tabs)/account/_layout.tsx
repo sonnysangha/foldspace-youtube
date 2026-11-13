@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router/stack';
 
 export default function AccountStack() {
-  return <Stack screenOptions={{ title: 'Account' }} />;
+  // Clerk's native profile draws its own navigation bar.
+  return <Stack screenOptions={{ title: 'Account', headerShown: false }} />;
 }
