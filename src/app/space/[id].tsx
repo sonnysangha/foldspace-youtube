@@ -1,3 +1,4 @@
+import { useAuth } from '@clerk/expo';
 import { useMutation, useQuery } from 'convex/react';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -19,6 +20,7 @@ import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 
 export default function SpaceScreen() {
+  const { getToken, sessionClaims } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const spaceId = id as Id<'spaces'>;
   const theme = useTheme();
@@ -78,7 +80,6 @@ export default function SpaceScreen() {
     );
   });
   const removeSpace = useMutation(api.spaces.remove);
-  const generateUploadUrl = useMutation(api.items.generateUploadUrl);
   const createImage = useMutation(api.items.createImage);
   const [uploading, setUploading] = useState(false);
 
@@ -132,19 +133,22 @@ export default function SpaceScreen() {
   /** Pick a photo, upload it to Convex file storage, then place it on the canvas. */
   async function addImage() {
     if (uploading) return;
-    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
-    if (picked.canceled) return;
-    const asset = picked.assets[0];
-    // Work out where the card goes before the upload, while the view is where the user left it.
-    const longest = Math.max(asset.width, asset.height) || 260;
-    const position = spot((asset.width / longest) * 260 || 260, (asset.height / longest) * 260 || 195);
     setUploading(true);
     try {
-      const uploadUrl = await generateUploadUrl();
+      const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+      if (picked.canceled) return;
+      const asset = picked.assets[0];
+      // Keep the drop position stable while the upload is in progress.
+      const longest = Math.max(asset.width, asset.height) || 260;
+      const position = spot((asset.width / longest) * 260 || 260, (asset.height / longest) * 260 || 195);
+      const siteUrl = process.env.EXPO_PUBLIC_CONVEX_SITE_URL;
+      if (!siteUrl) throw new Error('Image uploads are not configured.');
+      const token = await getToken(sessionClaims?.aud === 'convex' ? {} : { template: 'convex' });
+      if (!token) throw new Error('Please sign in again to upload an image.');
       const file = await (await fetch(asset.uri)).blob();
-      const response = await fetch(uploadUrl, {
+      const response = await fetch(`${siteUrl}/images/upload`, {
         method: 'POST',
-        headers: { 'Content-Type': asset.mimeType ?? 'image/jpeg' },
+        headers: { 'Content-Type': asset.mimeType ?? 'image/jpeg', Authorization: `Bearer ${token}` },
         body: file,
       });
       if (!response.ok) throw new Error(`Upload failed (${response.status})`);

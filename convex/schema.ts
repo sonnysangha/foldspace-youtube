@@ -39,6 +39,13 @@ export const imageContent = v.object({
 });
 
 export default defineSchema({
+  // Only the authenticated upload endpoint can register a file. Creating a
+  // card consumes this record atomically, so a file cannot back two cards.
+  imageUploads: defineTable({
+    ownerId: v.string(),
+    storageId: v.id("_storage"),
+  }).index("by_storageId", ["storageId"]),
+
   // A space is a canvas. Root spaces have no parent; nested spaces point at
   // the space whose canvas they sit on.
   spaces: defineTable({

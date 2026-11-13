@@ -268,12 +268,21 @@ export async function createImageItem(
   },
 ): Promise<Id<"items">> {
   await loadSpace(ctx, ownerId, args.spaceId);
+  const upload = await ctx.db
+    .query("imageUploads")
+    .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId))
+    .unique();
+  if (upload === null || upload.ownerId !== ownerId) {
+    throw new ConvexError("Image upload not found or already used");
+  }
   const file = await ctx.db.system.get("_storage", args.storageId);
   if (file === null) throw new ConvexError("Upload not found");
-  // Reject without deleting: nothing here proves the caller uploaded this file.
   if (file.contentType === undefined || !file.contentType.startsWith("image/")) {
     throw new ConvexError("That file is not an image");
   }
+  // This and the insert commit together. Concurrent/replayed creates cannot
+  // attach the same file to another card, including another user's card.
+  await ctx.db.delete("imageUploads", upload._id);
   const auto = await nextPosition(ctx, args.spaceId);
   const known = args.imageWidth > 0 && args.imageHeight > 0;
   const scale = known
