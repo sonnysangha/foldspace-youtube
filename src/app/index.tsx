@@ -2,7 +2,7 @@ import { UserButton } from '@clerk/expo/native-components';
 import { useConvexAuth, useQuery } from 'convex/react';
 import { Link, useRouter } from 'expo-router';
 import { Stack } from 'expo-router/stack';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Welcome } from '@/components/auth/welcome';
 import { ThemedText } from '@/components/themed-text';
@@ -91,20 +91,23 @@ function SpacesHome() {
           }
           renderItem={({ item }) => (
             <Link href={{ pathname: '/space/[id]', params: { id: item._id } }} asChild>
+              {/* Link asChild drops a function `style` on Android, so the pressed
+                  state is applied to an inner View instead of the Pressable. */}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Open space ${item.name}`}
-                style={({ pressed }) => [
-                  styles.card,
-                  {
-                    width: cardWidth,
-                    backgroundColor: item.color,
-                    transform: [{ scale: pressed ? 0.97 : 1 }],
-                  },
-                ]}>
-                <ThemedText style={styles.cardTitle} numberOfLines={3}>
-                  {item.name}
-                </ThemedText>
+                style={{ width: cardWidth }}>
+                {({ pressed }) => (
+                  <View
+                    style={[
+                      styles.card,
+                      { backgroundColor: item.color, transform: [{ scale: pressed ? 0.97 : 1 }] },
+                    ]}>
+                    <ThemedText style={styles.cardTitle} numberOfLines={3}>
+                      {item.name}
+                    </ThemedText>
+                  </View>
+                )}
               </Pressable>
             </Link>
           )}
@@ -116,7 +119,14 @@ function SpacesHome() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.four },
-  avatar: { width: 32, height: 32, borderRadius: 16, overflow: 'hidden' },
+  // Android's header puts the title flush against headerLeft, so add a gap there.
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: Platform.OS === 'android' ? Spacing.three : 0,
+  },
   card: {
     height: 130,
     borderRadius: Radius.large,

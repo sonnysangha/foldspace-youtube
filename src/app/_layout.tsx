@@ -4,6 +4,7 @@ import { ConvexReactClient, useConvexAuth } from 'convex/react';
 import { ConvexProviderWithClerk } from 'convex/react-clerk';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { Stack } from 'expo-router/stack';
+import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -26,6 +27,8 @@ export default function RootLayout() {
       <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            {/* Android does not flip status bar icons with the theme by itself. */}
+            <StatusBar style="auto" />
             <RootStack />
           </ThemeProvider>
         </ConvexProviderWithClerk>
@@ -47,6 +50,7 @@ function RootStack() {
             title: 'New space',
             presentation: 'formSheet',
             sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
             sheetAllowedDetents: [0.5],
           }}
         />
@@ -56,6 +60,7 @@ function RootStack() {
             title: 'Edit',
             presentation: 'formSheet',
             sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
             sheetAllowedDetents: [0.6, 1],
           }}
         />

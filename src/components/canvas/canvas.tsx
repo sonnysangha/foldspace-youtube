@@ -1,5 +1,5 @@
 import { useImperativeHandle, type Ref } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { PixelRatio, Platform, StyleSheet, View } from 'react-native';
 import { GestureDetector, usePanGesture, usePinchGesture, useSimultaneousGestures } from 'react-native-gesture-handler';
 import Animated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Path, Pattern, Rect } from 'react-native-svg';
@@ -23,6 +23,15 @@ const MAX_STROKE_VALUES = 8000;
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 export type Pen = { color: string; strokeWidth: number };
+
+// react-native-svg rasterises the whole grid into one bitmap on Android, and
+// Android refuses to draw a bitmap over 100 MB. At full resolution the grid is
+// 2400dp x pixel ratio per side, which crashes on dense screens (2.6x and up).
+// So on Android the grid is rendered at no more than this many pixels per side
+// and scaled back up, which keeps it near 30 MB on every device.
+const GRID_MAX_PIXELS = 2800;
+const GRID_DOWNSCALE =
+  Platform.OS === 'android' ? Math.max(1, (GRID_EXTENT * PixelRatio.get()) / GRID_MAX_PIXELS) : 1;
 
 export type CanvasHandle = {
   /** Canvas coordinates of the middle of the visible area. */
@@ -179,9 +188,10 @@ export function Canvas({
         <Animated.View style={[styles.world, worldStyle]}>
           <Svg
             pointerEvents="none"
-            width={GRID_EXTENT}
-            height={GRID_EXTENT}
-            style={{ position: 'absolute', left: -GRID_EXTENT / 2, top: -GRID_EXTENT / 2 }}>
+            width={GRID_EXTENT / GRID_DOWNSCALE}
+            height={GRID_EXTENT / GRID_DOWNSCALE}
+            viewBox={`0 0 ${GRID_EXTENT} ${GRID_EXTENT}`}
+            style={styles.grid}>
             <Defs>
               <Pattern id="dots" width={GRID_STEP} height={GRID_STEP} patternUnits="userSpaceOnUse">
                 <Circle cx={2} cy={2} r={1.6} fill={theme.canvasDot} />
@@ -229,5 +239,12 @@ export function Canvas({
 const styles = StyleSheet.create({
   viewport: { flex: 1, overflow: 'hidden' },
   // Scale from the top-left corner so screen = canvas * scale + translation.
+  grid: {
+    position: 'absolute',
+    left: -GRID_EXTENT / 2,
+    top: -GRID_EXTENT / 2,
+    transformOrigin: 'top left',
+    transform: [{ scale: GRID_DOWNSCALE }],
+  },
   world: { position: 'absolute', left: 0, top: 0, width: 1, height: 1, transformOrigin: 'top left' },
 });
