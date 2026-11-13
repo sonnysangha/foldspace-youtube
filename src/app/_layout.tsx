@@ -44,6 +44,8 @@ function RootStack() {
       <Stack.Screen name="index" options={{ title: 'Foldspace' }} />
       <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="space/[id]" options={{ title: '' }} />
+        {/* Clerk's native profile draws its own navigation bar. */}
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen
           name="new-space"
           options={{

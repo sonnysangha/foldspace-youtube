@@ -38,7 +38,12 @@
       ],
       "expo-secure-store",
       "@clerk/expo",
-      "@clerk/expo-native-components",
+      [
+        "@clerk/expo-native-components",
+        {
+          "theme": "./clerk-theme.json"
+        }
+      ],
       "expo-dev-client",
       [
         "expo-image-picker",

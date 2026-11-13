@@ -1,5 +1,6 @@
-import { UserButton } from '@clerk/expo/native-components';
+import { useUser } from '@clerk/expo';
 import { useConvexAuth, useQuery } from 'convex/react';
+import { Image } from 'expo-image';
 import { Link, useRouter } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -37,6 +38,7 @@ export default function HomeScreen() {
 function SpacesHome() {
   const theme = useTheme();
   const router = useRouter();
+  const { user } = useUser();
   const { width } = useLayout();
   const spaces = useQuery(api.spaces.listRoot);
 
@@ -51,9 +53,16 @@ function SpacesHome() {
           headerShown: true,
           title: 'Spaces',
           headerLeft: () => (
-            <View style={styles.avatar}>
-              <UserButton />
-            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Profile"
+              hitSlop={8}
+              onPress={() => router.push('/profile')}
+              style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
+              {user?.imageUrl ? (
+                <Image source={{ uri: user.imageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              ) : null}
+            </Pressable>
           ),
           headerRight: () => (
             <Pressable
