@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ActivityIndicator, Alert, type LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, type LayoutChangeEvent, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Canvas, type CanvasHandle } from '@/components/canvas/canvas';
 import { DrawColors, DrawStrokeWidth, type Stroke } from '@/components/canvas/drawing';
@@ -26,8 +26,10 @@ export default function SpaceScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { isWide } = useLayout();
-  // The header is translucent and floats over the canvas, so overlays start below it.
-  const overlayTop = useSafeAreaInsets().top + 52;
+  // On iOS the header is translucent and floats over the canvas, so overlays start
+  // below it. Android's header is opaque and the screen already starts under it.
+  const insets = useSafeAreaInsets();
+  const overlayTop = Platform.OS === 'ios' ? insets.top + 52 : Spacing.two;
   const canvasRef = useRef<CanvasHandle>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
