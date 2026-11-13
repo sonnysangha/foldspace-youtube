@@ -32,6 +32,48 @@ export type EditableContent =
       tasks: { id: string; text: string; done: boolean }[];
     };
 
+export type DrawingContent = {
+  kind: "drawing";
+  color: string;
+  strokeWidth: number;
+  points: number[];
+};
+
+/** Content a client may create. Drawings are write-once, so they are not editable. */
+export type CreatableContent = EditableContent | DrawingContent;
+
+// A stroke is stored in one document, so keep it well inside Convex's
+// 8192-value array limit.
+const MAX_DRAWING_VALUES = 8000;
+const MAX_STROKE_WIDTH = 64;
+
+/**
+ * Checks a stroke and returns the size of the item that holds it. Points are
+ * relative to the item's top-left corner, so the box runs from the origin to
+ * the furthest point plus room for the stroke's own thickness.
+ */
+function drawingSize(content: DrawingContent): { width: number; height: number } {
+  const { points, strokeWidth } = content;
+  if (points.length < 4 || points.length % 2 !== 0 || points.length > MAX_DRAWING_VALUES) {
+    throw new ConvexError("A drawing needs between 2 and 4000 points");
+  }
+  if (!(strokeWidth > 0 && strokeWidth <= MAX_STROKE_WIDTH)) {
+    throw new ConvexError("Stroke width is out of range");
+  }
+  let maxX = 0;
+  let maxY = 0;
+  for (let i = 0; i < points.length; i += 2) {
+    const x = points[i];
+    const y = points[i + 1];
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0) {
+      throw new ConvexError("Drawing points must be relative to the item's top-left corner");
+    }
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+  return { width: Math.ceil(maxX + strokeWidth), height: Math.ceil(maxY + strokeWidth) };
+}
+
 /** The signed-in user's stable identity key. Throws when signed out. */
 export async function requireOwner(ctx: QueryCtx | MutationCtx): Promise<string> {
   const identity = await ctx.auth.getUserIdentity();
@@ -191,17 +233,19 @@ export async function createItem(
     spaceId: Id<"spaces">;
     x?: number;
     y?: number;
-    content: EditableContent;
+    content: CreatableContent;
   },
 ): Promise<Id<"items">> {
   await loadSpace(ctx, ownerId, args.spaceId);
   const auto = await nextPosition(ctx, args.spaceId);
+  const size =
+    args.content.kind === "drawing" ? drawingSize(args.content) : DEFAULT_SIZE[args.content.kind];
   return await ctx.db.insert("items", {
     ownerId,
     spaceId: args.spaceId,
     x: args.x ?? auto.x,
     y: args.y ?? auto.y,
-    ...DEFAULT_SIZE[args.content.kind],
+    ...size,
     z: Date.now(),
     content: args.content,
   });
